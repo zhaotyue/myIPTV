@@ -1,0 +1,103 @@
+name: Update
+
+on:
+  watch:
+    types: [started]
+  schedule:
+    - cron: 0,30 * * * *
+  workflow_dispatch:
+
+env:
+  TZ: Asia/Shanghai
+
+jobs:
+  Update:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: GetTime
+      id: date
+      run: echo "::set-output name=date::$(date +'%Y-%m-%d %H:%M:%S CST')"
+
+    - name: Update
+      run: |
+        # 江西移动
+        #rm -f 江西移动.txt && wget https://raw.githubusercontent.com/testitemgit/TVBox-Sources/f5a71ebb3b8f606945ff32537b420a873bf60337/DIY/TV/merged.txt -O 江西移动.txt
+        #sed -i -n '/江西移动/p' 江西移动.txt
+        
+        # BurningC4仓库
+        rm -f TV-IPV4.m3u && wget https://raw.githubusercontent.com/BurningC4/Chinese-IPTV/master/TV-IPV4.m3u -O IPTV4.m3u
+        
+        # 视频源
+        rm -f ipv6-itv.m3u && wget https://raw.githubusercontent.com/vbskycn/iptv/414c76874b70b564f133f878a1a0d0d236a0e1f2/tv/ipv6-itv.m3u
+        cp ipv6-itv.m3u CCTV.m3u
+        cp ipv6-itv.m3u CNTV0.m3u
+        cp ipv6-itv.m3u CNTV1.m3u
+        cp ipv6-itv.m3u CNTV2.m3u
+        cp ipv6-itv.m3u CNTV3.m3u
+        rm -f ipv6-itv.m3u
+
+        # 央视源
+        sed -i -n '/央视频道/,+1p' CCTV.m3u
+        sed -i '1i #EXTM3U' CCTV.m3u
+        sed -i '/^\s*$/d' CCTV.m3u
+        
+        # 凤凰卫视
+        sed -i -n '/凤凰/,+1p' CNTV0.m3u
+        sed -i '1i #EXTM3U' CNTV0.m3u
+        sed -i '/^\s*$/d' CNTV0.m3u
+        
+        # 卫视频道
+        sed -i -n '/卫视频道/,+1p' CNTV1.m3u
+        sed -i '1i #EXTM3U' CNTV1.m3u
+        sed -i '/^\s*$/d' CNTV1.m3u
+
+        # 求索频道
+        #rm -f CNTV2.m3u && wget https://raw.githubusercontent.com/vbskycn/iptv/414c76874b70b564f133f878a1a0d0d236a0e1f2/tv/ipv6-itv.m3u -O CNTV2.m3u
+        sed -i -n '/求索/,+1p' CNTV2.m3u
+        sed -i '1i #EXTM3U' CNTV2.m3u
+        sed -i '/^\s*$/d' CNTV2.m3u
+
+        # 探索频道
+        sed -i -n '/探索/,+1p' CNTV3.m3u
+        sed -i '1i #EXTM3U' CNTV3.m3u
+        sed -i '/^\s*$/d' CNTV3.m3u
+        
+        rm -f CNTV.m3u && touch CNTV.m3u
+        cat CNTV0.m3u >> CNTV.m3u
+        cat CNTV1.m3u >> CNTV.m3u
+        cat CNTV2.m3u >> CNTV.m3u
+        cat CNTV3.m3u >> CNTV.m3u
+        rm -f CNTV0.m3u CNTV1.m3u CNTV2.m3u CNTV3.m3u
+        sed -i '1i #EXTM3U' CNTV.m3u
+        sed -i '/^\s*$/d' CNTV.m3u
+
+        # 整合源
+        rm -f IPTV6.m3u && touch IPTV6.m3u
+        cat CCTV.m3u >> IPTV6.m3u
+        cat CNTV.m3u >> IPTV6.m3u
+        sed -i '/#EXTM3U/d' IPTV6.m3u
+        sed -i '1i #EXTM3U' IPTV6.m3u
+        sed -i '/^\s*$/d' IPTV6.m3u
+
+        rm -f CCTV.m3u CNTV.m3u
+
+        # 节目源
+        rm -f EPG.xml && wget https://epg.112114.xyz/pp.xml -O EPG.xml
+        # readme.md
+        echo "https://ghp.ci/https://raw.githubusercontent.com/zhaotyue/myIPTV/refs/heads/main/IPTV6.m3u" > README.md
+
+    - name: Clean
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git checkout --orphan latest_branch
+        git add -A
+        git commit -am "${{ steps.date.outputs.date }}"
+        git branch -D main
+        git branch -m main
+
+    - name: Push
+      run: git push -f origin main
